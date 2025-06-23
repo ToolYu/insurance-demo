@@ -9,7 +9,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend
 } from 'recharts';
 
-// 颜色调色板，可根据需要增减
+// 颜色调色板
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#387908', '#8dd1e1', '#a4de6c', '#d0ed57'];
 
 export default function Dashboard() {
@@ -87,7 +87,7 @@ export default function Dashboard() {
           <Card className="shadow-lg rounded-2xl transition-shadow hover:shadow-xl">
             <CardHeader><h2 className="text-xl font-semibold">已选文件</h2></CardHeader>
             <CardContent className="space-y-4">
-              {files.length===0 ? (
+              {files.length === 0 ? (
                 <p className="text-gray-500">暂无文件</p>
               ) : (
                 files.map((f, i) => (
@@ -97,7 +97,7 @@ export default function Dashboard() {
                   </div>
                 ))
               )}
-              <Button onClick={startAnalysis} className="mt-2 w-full bg-indigo-600 text-white py-2 rounded-xl shadow hover:shadow-lg transition-shadow">
+              <Button onClick={startAnalysis} className="mt-2 w-full bg-indigo-600 text白 py-2 rounded-xl shadow hover:shadow-lg transition-shadow">
                 {loading ? '分析中...' : '开始分析'}
               </Button>
             </CardContent>
@@ -126,30 +126,20 @@ export default function Dashboard() {
                 <p className="text-gray-400 text-center py-8">暂无数据</p>
               ) : (
                 <table className="w-full border-collapse text-left">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="p-2">产品名称</th>
-                      <th className="p-2">保多少</th>
-                      <th className="p-2">保多久</th>
-                      <th className="p-2">首年交多少</th>
-                      <th className="p-2">交多久</th>
-                      <th className="p-2">总缴费</th>
-                      <th className="p-2">回本期</th>
+                  <thead><tr className="bg-gray-100">
+                    <th className="p-2">产品名称</th><th className="p-2">保多少</th><th className="p-2">保多久</th><th className="p-2">首年交多少</th><th className="p-2">交多久</th><th className="p-2">总缴费</th><th className="p-2">回本期</th>
+                  </tr></thead>
+                  <tbody>{results.map((r, i) => (
+                    <tr key={i} className="border-t hover:bg-gray-50">
+                      <td className="p-2 truncate">{r['产品名称']}</td>
+                      <td className="p-2">{r['保多少']}</td>
+                      <td className="p-2">{r['保多久']}</td>
+                      <td className="p-2">{r['首年交多少']}</td>
+                      <td className="p-2">{r['交多久']}</td>
+                      <td className="p-2">{(r['首年交多少']||0)*(r['交多久']||0)}</td>
+                      <td className="p-2">{r.computedPayback?`第${r.computedPayback}年`:'--'}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {results.map((r, i) => (
-                      <tr key={i} className="border-t hover:bg-gray-50">
-                        <td className="p-2 truncate">{r['产品名称']}</td>
-                        <td className="p-2">{r['保多少']}</td>
-                        <td className="p-2">{r['保多久']}</td>
-                        <td className="p-2">{r['首年交多少']}</td>
-                        <td className="p-2">{r['交多久']}</td>
-                        <td className="p-2">{(r['首年交多少'] || 0) * (r['交多久'] || 0)}</td>
-                        <td className="p-2">{r.computedPayback ? `第${r.computedPayback}年` : '--'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
+                  ))}</tbody>
                 </table>
               )}
             </CardContent>
@@ -158,14 +148,14 @@ export default function Dashboard() {
             <CardHeader><h2 className="text-xl font-semibold">现金价值趋势图</h2></CardHeader>
             <CardContent style={{ height: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={buildTrendData('cashValueTrend')} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <LineChart data={buildTrendData('cashValueTrend')} margin={{top:5,right:30,left:20,bottom:5}}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="year" />
                   <YAxis />
                   <Tooltip />
                   <Legend />
                   {results.map((r, idx) => (
-                    <Line key={r['产品名称']} type="monotone" dataKey={r['产品名称']} stroke={COLORS[idx % COLORS.length]} dot={false} />
+                    <Line key={r['产品名称']} type="monotone" dataKey={r['产品名称']} stroke={COLORS[idx%COLORS.length]} dot={false} />
                   ))}
                 </LineChart>
               </ResponsiveContainer>
@@ -175,14 +165,14 @@ export default function Dashboard() {
             <CardHeader><h2 className="text-xl font-semibold">IRR 趋势图</h2></CardHeader>
             <CardContent style={{ height: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={buildTrendData('irrTrend')} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <LineChart data={buildTrendData('irrTrend')} margin={{top:5,right:30,left:20,bottom:5}}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="year" />
                   <YAxis unit="%" />
                   <Tooltip />
                   <Legend />
                   {results.map((r, idx) => (
-                    <Line key={r['产品名称']} type="monotone" dataKey={r['产品名称']} stroke={COLORS[idx % COLORS.length]} dot={false} />
+                    <Line key={r['产品名称']} type="monotone" dataKey={r['产品名称']} stroke={COLORS[idx%COLORS.length]} dot={false} />
                   ))}
                 </LineChart>
               </ResponsiveContainer>
