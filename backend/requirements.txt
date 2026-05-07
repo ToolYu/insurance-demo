@@ -1,0 +1,10 @@
+fastapi==0.115.14
+uvicorn[standard]==0.34.3
+openai==1.93.0
+python-multipart==0.0.20
+pydantic==2.11.7
+pdfplumber==0.11.7
+camelot-py[cv]==1.0.0
+pytesseract==0.3.13
+Pillow==11.2.1
+numpy-financial==1.0.0
