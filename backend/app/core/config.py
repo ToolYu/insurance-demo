@@ -11,6 +11,7 @@ def _csv_env(name: str, default: str) -> list[str]:
 class Settings:
     app_name: str = "Insurance Plan Analyzer API"
     cors_origins: list[str] = None
+    cors_origin_regex: str | None = r"https://.*\.vercel\.app"
     llm_api_key: str | None = None
     llm_base_url: str = "https://api.deepseek.com/v1"
     llm_model: str = "deepseek-chat"
@@ -24,6 +25,7 @@ class Settings:
                 "CORS_ORIGINS",
                 "http://localhost:3000,http://127.0.0.1:3000",
             ),
+            cors_origin_regex=os.getenv("CORS_ORIGIN_REGEX", r"https://.*\.vercel\.app"),
             llm_api_key=os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENAI_API_KEY"),
             llm_base_url=os.getenv("LLM_BASE_URL", "https://api.deepseek.com/v1"),
             llm_model=os.getenv("LLM_MODEL", "deepseek-chat"),
