@@ -1,12 +1,9 @@
 "use client";
 
-import React, { ChangeEvent, DragEvent, useMemo, useState } from "react";
-import { FileText, KeyRound, RotateCcw, UploadCloud, X } from "lucide-react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import React, { ChangeEvent, DragEvent, useMemo, useRef, useState } from "react";
+import { FileText, KeyRound, Loader2, Paperclip, RotateCcw, UploadCloud, X } from "lucide-react";
 import {
   CartesianGrid,
-  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -14,35 +11,26 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { analyzeFiles, analyzeText } from "@/lib/api";
+import { analyzeFiles } from "@/lib/api";
 import { buildTrendData, currency } from "@/lib/analysis";
 import type { AnalysisResult } from "@/lib/types";
 
-const COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2", "#4d7c0f", "#be185d"];
+const COLORS = ["#8f5d46", "#4f6358", "#b4764f", "#2f4b57", "#756052", "#9b6f5d"];
+
+type Credentials = {
+  apiKey: string;
+};
 
 export default function Dashboard() {
   const [files, setFiles] = useState<File[]>([]);
-  const [text, setText] = useState("");
-  const [planName, setPlanName] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [baseUrl, setBaseUrl] = useState("https://api.deepseek.com/v1");
-  const [model, setModel] = useState("deepseek-chat");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [results, setResults] = useState<AnalysisResult[]>([]);
 
   const cashValueTrend = useMemo(() => buildTrendData(results, "cashValueTrend"), [results]);
   const irrTrend = useMemo(() => buildTrendData(results, "irrTrend"), [results]);
-
-  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    appendFiles(Array.from(event.dataTransfer.files));
-  };
-
-  const handleBrowse = (event: ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files) appendFiles(Array.from(event.target.files));
-    event.target.value = "";
-  };
+  const credentials = { apiKey };
 
   const appendFiles = (incoming: File[]) => {
     setError("");
@@ -54,30 +42,24 @@ export default function Dashboard() {
   };
 
   const startAnalysis = async () => {
-    const trimmedText = text.trim();
-    if (!files.length && !trimmedText) {
-      setError("请上传计划书文件，或粘贴计划书文字后再开始分析。");
+    if (!files.length) {
+      setError("Upload a proposal file before starting the analysis.");
       return;
     }
     if (!apiKey.trim()) {
-      setError("请先输入你自己的 LLM API Key。");
+      setError("Enter your own LLM API key before starting the analysis.");
       return;
     }
 
     setLoading(true);
     setError("");
     try {
-      const credentials = {
+      const nextResults = await analyzeFiles(files, {
         apiKey: apiKey.trim(),
-        baseUrl: baseUrl.trim() || undefined,
-        model: model.trim() || undefined,
-      };
-      const nextResults = files.length
-        ? await analyzeFiles(files, credentials)
-        : await analyzeText(trimmedText, planName.trim() || "文本输入方案", credentials);
+      });
       setResults(nextResults);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "分析失败，请检查后端服务和环境变量配置。");
+      setError(err instanceof Error ? err.message : "Analysis failed. Check the API service and environment configuration.");
     } finally {
       setLoading(false);
     }
@@ -85,238 +67,309 @@ export default function Dashboard() {
 
   const reset = () => {
     setFiles([]);
-    setText("");
-    setPlanName("");
     setApiKey("");
     setError("");
     setResults([]);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950">
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 px-6 py-4 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-normal text-slate-950">京保保智能保险计划分析助手</h1>
-            <p className="mt-1 text-sm text-slate-600">多文件上传、文字输入、核心指标提取与可视化对比</p>
+    <div className="min-h-screen overflow-hidden bg-[#f7f4ee] text-[#171512]">
+      <Header onReset={reset} />
+
+      <main className="grid min-h-[calc(100vh-88px)] grid-cols-1 lg:grid-cols-2">
+        <section className="flex items-start justify-center px-6 pb-10 pt-10 sm:px-10 sm:pt-12 lg:px-14 lg:pt-20">
+          <div className="w-full max-w-[660px]">
+            <HeroCopy />
+            <UploadPanel
+              files={files}
+              credentials={credentials}
+              loading={loading}
+              error={error}
+              onFilesAdded={appendFiles}
+              onFileRemoved={removeFile}
+              onApiKeyChange={setApiKey}
+              onAnalyze={startAnalysis}
+            />
           </div>
-          <Button onClick={reset} className="inline-flex items-center gap-2 border-slate-300 bg-white text-slate-700 hover:bg-slate-100">
-            <RotateCcw className="h-4 w-4" />
-            新分析
-          </Button>
-        </div>
-      </header>
-
-      <main className="mx-auto grid max-w-7xl gap-6 p-6 lg:grid-cols-[360px_1fr]">
-        <section className="space-y-4">
-          <Card>
-            <CardHeader>
-              <h2 className="text-base font-semibold">API 设置</h2>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <label className="block">
-                <span className="mb-1 flex items-center gap-2 text-sm font-medium text-slate-700">
-                  <KeyRound className="h-4 w-4" />
-                  DeepSeek API Key
-                </span>
-                <input
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                  type="password"
-                  value={apiKey}
-                  onChange={(event) => setApiKey(event.target.value)}
-                  placeholder="sk-..."
-                  autoComplete="off"
-                />
-              </label>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <input
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                  value={baseUrl}
-                  onChange={(event) => setBaseUrl(event.target.value)}
-                  placeholder="API Base URL"
-                />
-                <input
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                  value={model}
-                  onChange={(event) => setModel(event.target.value)}
-                  placeholder="模型名称"
-                />
-              </div>
-              <p className="text-xs leading-5 text-slate-500">API Key 只随本次请求发送到后端，不写入代码，也不会保存在浏览器持久存储中。</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <h2 className="text-base font-semibold">输入计划书</h2>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div
-                onDrop={handleDrop}
-                onDragOver={(event) => event.preventDefault()}
-                className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center transition-colors hover:border-blue-500"
-              >
-                <UploadCloud className="mx-auto mb-3 h-10 w-10 text-blue-600" />
-                <p className="text-sm text-slate-700">
-                  拖拽 PDF/TXT 文件，或{" "}
-                  <label className="cursor-pointer font-medium text-blue-700 underline">
-                    浏览
-                    <input type="file" multiple hidden accept=".pdf,.txt,.md,.json,application/pdf,text/plain" onChange={handleBrowse} />
-                  </label>
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <input
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                  value={planName}
-                  onChange={(event) => setPlanName(event.target.value)}
-                  placeholder="文本方案名称"
-                />
-                <textarea
-                  className="h-36 w-full resize-none rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500"
-                  value={text}
-                  onChange={(event) => setText(event.target.value)}
-                  placeholder="也可以直接粘贴计划书文字内容"
-                />
-              </div>
-
-              {files.length > 0 && (
-                <div className="space-y-2">
-                  {files.map((file, index) => (
-                    <div key={`${file.name}-${index}`} className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2">
-                      <FileText className="h-4 w-4 shrink-0 text-slate-500" />
-                      <span className="min-w-0 flex-1 truncate text-sm">{file.name}</span>
-                      <button
-                        type="button"
-                        aria-label={`移除 ${file.name}`}
-                        className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-red-600"
-                        onClick={() => removeFile(index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {error && <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-
-              <Button
-                onClick={startAnalysis}
-                disabled={loading}
-                className="w-full border-blue-700 bg-blue-700 py-2 text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loading ? "分析中..." : "开始分析"}
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <h2 className="text-base font-semibold">方案文字总结</h2>
-            </CardHeader>
-            <CardContent className="max-h-80 space-y-4 overflow-y-auto">
-              {results.length === 0 ? (
-                <p className="py-6 text-center text-sm text-slate-500">暂无总结</p>
-              ) : (
-                results.map((result, index) => (
-                  <div key={`${result["产品名称"]}-${index}`}>
-                    <h3 className="mb-1 truncate text-sm font-semibold text-blue-800">{result["产品名称"]}</h3>
-                    <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">{result.summary}</p>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
         </section>
 
-        <section className="space-y-4">
-          <Card>
-            <CardHeader>
-              <h2 className="text-base font-semibold">核心指标对比</h2>
-            </CardHeader>
-            <CardContent>
-              {results.length === 0 ? (
-                <p className="py-10 text-center text-sm text-slate-500">暂无数据</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[760px] border-collapse text-left text-sm">
-                    <thead>
-                      <tr className="border-b bg-slate-100 text-slate-700">
-                        <th className="p-3 font-medium">产品名称</th>
-                        <th className="p-3 font-medium">保多少</th>
-                        <th className="p-3 font-medium">保多久</th>
-                        <th className="p-3 font-medium">首年交多少</th>
-                        <th className="p-3 font-medium">交多久</th>
-                        <th className="p-3 font-medium">总缴费</th>
-                        <th className="p-3 font-medium">回本期</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {results.map((result, index) => {
-                        const premium = result["首年交多少"] || 0;
-                        const years = result["交多久"] || 0;
-                        return (
-                          <tr key={`${result["产品名称"]}-${index}`} className="border-b hover:bg-slate-50">
-                            <td className="max-w-56 truncate p-3">{result["产品名称"]}</td>
-                            <td className="p-3">{currency(result["保多少"])}</td>
-                            <td className="p-3">{result["保多久"] || "--"}</td>
-                            <td className="p-3">{currency(premium)}</td>
-                            <td className="p-3">{years || "--"}</td>
-                            <td className="p-3">{currency(Number(premium) * Number(years))}</td>
-                            <td className="p-3">{result.computedPayback ? `第${result.computedPayback}年` : "--"}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <TrendCard title="现金价值趋势图" data={cashValueTrend} results={results} />
-          <TrendCard title="IRR 趋势图" data={irrTrend} results={results} unit="%" />
+        <section className="relative border-t border-[#ded8ce] bg-[#f3f0e8] px-5 py-8 lg:border-l lg:border-t-0 lg:px-9 lg:py-10">
+          <div className="absolute inset-0 opacity-60 [background-image:linear-gradient(#ded8ce_1px,transparent_1px),linear-gradient(90deg,#ded8ce_1px,transparent_1px)] [background-size:42px_42px]" />
+          <AnalysisPreview results={results} cashValueTrend={cashValueTrend} irrTrend={irrTrend} loading={loading} />
         </section>
       </main>
     </div>
   );
 }
 
-function TrendCard({
+function Header({ onReset }: { onReset: () => void }) {
+  return (
+    <header className="relative z-20 flex h-[88px] items-center justify-between px-6 sm:px-10 lg:px-12">
+      <div className="flex items-center gap-3">
+        <span className="font-serif text-4xl tracking-[-0.03em] text-[#171512]">InsureLens</span>
+      </div>
+
+      <button
+        type="button"
+        onClick={onReset}
+        className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#d9d2c6] bg-[#fbfaf7] px-4 text-sm font-medium text-[#2b2925] shadow-sm transition hover:bg-white"
+      >
+        <RotateCcw className="h-4 w-4" />
+        Reset
+      </button>
+    </header>
+  );
+}
+
+function HeroCopy() {
+  return (
+    <div className="mb-10 text-center">
+      <h1 className="mx-auto max-w-[580px] font-serif text-[58px] leading-[0.98] tracking-[-0.055em] text-[#171512] sm:text-[74px] lg:text-[86px]">
+        Read plans,
+        <br />
+        decide faster
+      </h1>
+      <p className="mx-auto mt-8 max-w-[520px] text-[18px] leading-7 text-[#4c4740] sm:text-[21px]">
+        Upload an insurance proposal, add your API key, and turn dense policy pages into clear metrics and risk notes.
+      </p>
+    </div>
+  );
+}
+
+function UploadPanel({
+  files,
+  credentials,
+  loading,
+  error,
+  onFilesAdded,
+  onFileRemoved,
+  onApiKeyChange,
+  onAnalyze,
+}: {
+  files: File[];
+  credentials: Credentials;
+  loading: boolean;
+  error: string;
+  onFilesAdded: (files: File[]) => void;
+  onFileRemoved: (index: number) => void;
+  onApiKeyChange: (value: string) => void;
+  onAnalyze: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleBrowse = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) onFilesAdded(Array.from(event.target.files));
+    event.target.value = "";
+  };
+
+  const handleDrop = (event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    onFilesAdded(Array.from(event.dataTransfer.files));
+  };
+
+  return (
+    <div className="mx-auto max-w-[560px] rounded-[32px] border border-[#ded8ce] bg-[#fbfaf7]/88 p-6 shadow-[0_28px_80px_rgba(68,55,40,0.10)] backdrop-blur sm:p-8">
+      <input
+        ref={inputRef}
+        type="file"
+        multiple
+        hidden
+        accept=".pdf,.txt,.md,.json,application/pdf,text/plain"
+        onChange={handleBrowse}
+      />
+
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        onDrop={handleDrop}
+        onDragOver={(event) => event.preventDefault()}
+        className="group flex h-[68px] w-full items-center justify-center gap-3 rounded-2xl border border-[#d8d1c6] bg-[#fffdf9] px-5 text-[17px] font-semibold text-[#24211d] shadow-sm transition hover:border-[#c9bdb0] hover:bg-white"
+      >
+        <UploadCloud className="h-5 w-5 text-[#cc785c] transition group-hover:-translate-y-0.5" />
+        Upload File
+      </button>
+
+      <div className="my-5 flex items-center gap-3 text-xs font-medium uppercase tracking-[0.18em] text-[#80776b]">
+        <span className="h-px flex-1 bg-[#e1dbd0]" />
+        Workflow
+        <span className="h-px flex-1 bg-[#e1dbd0]" />
+      </div>
+
+      <div className="space-y-3">
+        <label className="relative block">
+          <KeyRound className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8b8174]" />
+          <input
+            className="h-16 w-full rounded-2xl border border-[#d8d1c6] bg-[#fffdf9] pl-11 pr-4 text-[17px] text-[#24211d] outline-none transition placeholder:text-[#92897d] focus:border-[#bda48f] focus:ring-4 focus:ring-[#d6bba2]/20"
+            type="password"
+            value={credentials.apiKey}
+            onChange={(event) => onApiKeyChange(event.target.value)}
+            placeholder="Add API"
+            autoComplete="off"
+          />
+        </label>
+
+        <button
+          type="button"
+          onClick={onAnalyze}
+          disabled={loading}
+          className="flex h-16 w-full items-center justify-center rounded-2xl bg-[#171512] text-[17px] font-semibold text-white shadow-[0_10px_24px_rgba(23,21,18,0.18)] transition hover:bg-[#28231f] disabled:cursor-not-allowed disabled:opacity-65"
+        >
+          {loading ? (
+            <span className="inline-flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Analyzing
+            </span>
+          ) : (
+            "Start Analysis"
+          )}
+        </button>
+      </div>
+
+      {files.length > 0 && (
+        <div className="mt-6 space-y-2">
+          {files.map((file, index) => (
+            <div key={`${file.name}-${index}`} className="flex items-center gap-2 rounded-xl border border-[#e3ddd3] bg-[#f7f3ec] px-3 py-2">
+              <FileText className="h-4 w-4 shrink-0 text-[#8f5d46]" />
+              <span className="min-w-0 flex-1 truncate text-sm text-[#4b453e]">{file.name}</span>
+              <button
+                type="button"
+                aria-label={`Remove ${file.name}`}
+                className="rounded-md p-1 text-[#8d8276] hover:bg-[#ece5da] hover:text-[#8f3f2e]"
+                onClick={() => onFileRemoved(index)}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {error && <p className="mt-4 rounded-xl border border-[#dfb7a8] bg-[#fff3ee] px-4 py-3 text-sm text-[#7a3b2c]">{error}</p>}
+
+    </div>
+  );
+}
+
+function AnalysisPreview({
+  results,
+  cashValueTrend,
+  irrTrend,
+  loading,
+}: {
+  results: AnalysisResult[];
+  cashValueTrend: Array<Record<string, number | string | null>>;
+  irrTrend: Array<Record<string, number | string | null>>;
+  loading: boolean;
+}) {
+  return (
+    <div className="relative z-10 mx-auto max-w-[850px] rounded-[28px] border border-[#d8d0c3] bg-[#ebe7dc]/86 p-4 shadow-[0_26px_80px_rgba(43,35,25,0.16)] backdrop-blur sm:p-6">
+      <div className="rounded-[22px] border border-[#d6cec1] bg-[#f8f6f1]">
+        <PreviewToolbar loading={loading} />
+        <div className="space-y-4 p-4 sm:p-5">
+          <MetricComparison results={results} />
+          <TrendChart title="Cash Value Trend" data={cashValueTrend} results={results} />
+          <TrendChart title="IRR Trend" data={irrTrend} results={results} unit="%" compact />
+          <SummaryPanel results={results} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PreviewToolbar({ loading }: { loading: boolean }) {
+  return (
+    <div className="flex items-center justify-between border-b border-[#ded7cc] px-5 py-4">
+      <div>
+        <p className="text-sm font-semibold text-[#25221f]">Analysis Preview</p>
+        <p className="mt-0.5 text-xs text-[#857b70]">Metrics, cash values, IRR, and plain-English notes</p>
+      </div>
+      <div className="inline-flex items-center gap-2 rounded-full border border-[#ddd5c8] bg-[#fffdf9] px-3 py-1.5 text-xs font-medium text-[#6d6258]">
+        <span className={`h-2 w-2 rounded-full ${loading ? "animate-pulse bg-[#cc785c]" : "bg-[#798c73]"}`} />
+        {loading ? "Running" : "Ready"}
+      </div>
+    </div>
+  );
+}
+
+function MetricComparison({ results }: { results: AnalysisResult[] }) {
+  const first = results[0];
+  const premium = first?.["首年交多少"] || 0;
+  const years = first?.["交多久"] || 0;
+  const latestCashValue = first?.["现金价值"] || first?.["利益演示表"]?.at(-1)?.cash_value;
+  const latestIrr = first?.irrTrend?.filter((value) => value !== null).at(-1);
+  const metrics = [
+    { label: "Annual Premium", value: first ? currency(premium) : "--" },
+    { label: "Total Premium", value: first ? currency(first["总保费"] || Number(premium) * Number(years)) : "--" },
+    { label: "Cash Value", value: latestCashValue ? currency(latestCashValue) : "--" },
+    { label: "Death Benefit", value: first ? currency(first["身故保障"] || first["保多少"]) : "--" },
+    { label: "Expected Return", value: first?.["预期收益"] ? currency(first["预期收益"]) : "--" },
+    { label: "IRR", value: typeof latestIrr === "number" ? `${latestIrr.toFixed(2)}%` : "--" },
+  ];
+
+  return (
+    <section className="rounded-2xl border border-[#ddd6cb] bg-[#fffdf9] p-4">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-[#25221f]">Key Metrics</h2>
+          <p className="mt-1 text-xs text-[#857b70]">{first?.["产品名称"] || "Upload a proposal to generate comparable metrics."}</p>
+        </div>
+        <Paperclip className="h-4 w-4 text-[#a09184]" />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {metrics.map((metric) => (
+          <div key={metric.label} className="rounded-2xl bg-[#262a3b] px-4 py-5 text-white shadow-sm">
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/58">{metric.label}</p>
+            <p className="mt-3 font-serif text-3xl leading-none tracking-[-0.04em]">{metric.value}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TrendChart({
   title,
   data,
   results,
   unit,
+  compact = false,
 }: {
   title: string;
   data: Array<Record<string, number | string | null>>;
   results: AnalysisResult[];
   unit?: string;
+  compact?: boolean;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <h2 className="text-base font-semibold">{title}</h2>
-      </CardHeader>
-      <CardContent className="h-80">
+    <section className="rounded-2xl border border-[#ddd6cb] bg-[#fffdf9] p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-base font-semibold text-[#25221f]">{title}</h2>
+        <span className="text-xs text-[#8a8176]">{results.length ? `${results.length} plan${results.length > 1 ? "s" : ""}` : "Awaiting data"}</span>
+      </div>
+      <div className={compact ? "h-[210px]" : "h-[260px]"}>
         {results.length === 0 ? (
-          <p className="py-28 text-center text-sm text-slate-500">暂无图表数据</p>
+          <EmptyChart />
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 8, right: 24, left: 12, bottom: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="year" />
-              <YAxis unit={unit} />
-              <Tooltip />
-              <Legend />
+            <LineChart data={data} margin={{ top: 8, right: 18, left: 0, bottom: 6 }}>
+              <CartesianGrid stroke="#e7e0d5" strokeDasharray="3 3" />
+              <XAxis dataKey="year" tick={{ fill: "#766d62", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "#ded6ca" }} />
+              <YAxis unit={unit} tick={{ fill: "#766d62", fontSize: 11 }} tickLine={false} axisLine={false} width={48} />
+              <Tooltip
+                contentStyle={{
+                  background: "#fffdf9",
+                  border: "1px solid #d9d1c5",
+                  borderRadius: 14,
+                  color: "#25221f",
+                }}
+              />
               {results.map((result, index) => (
                 <Line
                   key={`${title}-${result["产品名称"]}-${index}`}
                   type="monotone"
-                  dataKey={result["产品名称"] || "未命名方案"}
+                  dataKey={result["产品名称"] || "Unnamed Plan"}
                   stroke={COLORS[index % COLORS.length]}
+                  strokeWidth={2.5}
                   dot={false}
                   connectNulls
                 />
@@ -324,7 +377,38 @@ function TrendCard({
             </LineChart>
           </ResponsiveContainer>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
+  );
+}
+
+function EmptyChart() {
+  return (
+    <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-[#ded6ca] bg-[#faf8f3] text-center">
+      <div>
+        <p className="font-medium text-[#4b453e]">No chart data yet</p>
+        <p className="mt-1 text-sm text-[#8a8176]">Results will appear after analysis completes.</p>
+      </div>
+    </div>
+  );
+}
+
+function SummaryPanel({ results }: { results: AnalysisResult[] }) {
+  return (
+    <section className="rounded-2xl border border-[#ddd6cb] bg-[#fffdf9] p-4">
+      <h2 className="text-base font-semibold text-[#25221f]">Advisor Notes</h2>
+      {results.length === 0 ? (
+        <p className="mt-3 text-sm leading-6 text-[#83796e]">Plain-language summaries and risk notes will be generated here.</p>
+      ) : (
+        <div className="mt-3 max-h-40 space-y-3 overflow-y-auto">
+          {results.map((result, index) => (
+            <div key={`${result["产品名称"]}-${index}`}>
+              <p className="text-sm font-semibold text-[#8f5d46]">{result["产品名称"]}</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-[#5a5249]">{result.summary}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }

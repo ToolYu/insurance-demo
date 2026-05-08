@@ -17,6 +17,8 @@ class Settings:
     llm_model: str = "deepseek-chat"
     max_upload_size_mb: int = 20
     enable_ocr: bool = True
+    max_pdf_pages: int = 20
+    max_llm_chars: int = 60000
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -31,6 +33,8 @@ class Settings:
             llm_model=os.getenv("LLM_MODEL", "deepseek-chat"),
             max_upload_size_mb=int(os.getenv("MAX_UPLOAD_SIZE_MB", "20")),
             enable_ocr=os.getenv("ENABLE_OCR", "true").lower() == "true",
+            max_pdf_pages=int(os.getenv("MAX_PDF_PAGES", "20")),
+            max_llm_chars=int(os.getenv("MAX_LLM_CHARS", "60000")),
         )
 
 

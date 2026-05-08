@@ -21,3 +21,7 @@ services:
         value: "20"
       - key: ENABLE_OCR
         value: "true"
+      - key: MAX_PDF_PAGES
+        value: "20"
+      - key: MAX_LLM_CHARS
+        value: "60000"

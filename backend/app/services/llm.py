@@ -10,9 +10,13 @@ from app.core.config import settings
 PLAN_SCHEMA = {
     "产品名称": "string",
     "保多少": "number|string",
+    "身故保障": "number|string",
     "保多久": "string",
     "首年交多少": "number",
     "交多久": "integer",
+    "总保费": "number",
+    "现金价值": "number",
+    "预期收益": "number|string",
     "利益演示表": [{"year": "integer", "cash_value": "number", "surrender": "number"}],
 }
 
@@ -34,6 +38,9 @@ def parse_plan_text(
     prompt = (
         "你是保险计划书结构化分析助手。请严格只输出 JSON，不要添加解释或 Markdown。\n"
         "如果字段无法确认，请使用空字符串、0 或空数组，不要编造。\n"
+        "请尽量从计划书中提取年度利益演示表，用于计算现金价值趋势和 IRR 趋势。\n"
+        "字段说明：首年交多少=年缴保费；交多久=缴费年限；总保费=年缴保费*缴费年限；现金价值=演示表最后一年或最晚年度现金价值；身故保障=身故保险金/基本保额/有效保额；预期收益=现金价值-总保费或计划书列明收益。\n"
+        "利益演示表每行必须包含 year 和 cash_value，year 使用保单年度数字，cash_value 使用该年度现金价值数字。\n"
         f"文件/方案名称提示：{name_hint or ''}\n\n"
         "保险计划书内容：\n"
         f"{text}\n\n"
@@ -58,8 +65,8 @@ def generate_plan_summary(
         irr_text = f"{min(valid_irr):.2f}%~{max(valid_irr):.2f}%"
 
     prompt = (
-        "请用中文为普通用户简短点评这份保险计划，避免 Markdown 标记。\n"
-        "需要包含：保障/缴费概况、现金价值和回本情况、适合人群、主要风险提示。\n"
+        "Write a concise plain-English insurance plan note for a consumer. Avoid Markdown.\n"
+        "Include coverage/payment overview, cash value and payback, who it may fit, and key risks.\n"
         f"结构化数据：{json.dumps(parsed, ensure_ascii=False)}\n"
         f"计算回本期：{payback or '未回本'}\n"
         f"IRR 区间：{irr_text}"

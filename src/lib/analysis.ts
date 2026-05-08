@@ -4,15 +4,15 @@ export function buildTrendData(results: AnalysisResult[], type: TrendType): Arra
   const chartData: Array<Record<string, number | string | null>> = [];
 
   results.forEach((result) => {
-    const name = result["产品名称"] || "未命名方案";
+    const name = result["产品名称"] || "Unnamed Plan";
     const source =
       type === "cashValueTrend"
         ? (result["利益演示表"] || []).map((row) => ({
-            year: `第${row.year}年`,
+            year: `Year ${row.year}`,
             [name]: row.cash_value,
           }))
         : (result.irrTrend || []).map((value, index) => ({
-            year: `第${index + 1}年`,
+            year: `Year ${index + 1}`,
             [name]: value,
           }));
 

@@ -20,12 +20,12 @@ async function parseResponse(response: Response): Promise<AnalysisResult[]> {
     const detail =
       payload && typeof payload === "object" && "detail" in payload
         ? String((payload as { detail?: unknown }).detail)
-        : "分析请求失败，请稍后重试";
+        : "Analysis request failed. Please try again later.";
     throw new Error(detail);
   }
 
   if (!Array.isArray(payload)) {
-    throw new Error("后端返回格式异常");
+    throw new Error("The API returned an unexpected response format.");
   }
   return payload as AnalysisResult[];
 }

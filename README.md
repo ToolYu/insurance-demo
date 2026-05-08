@@ -15,7 +15,7 @@
 ## 技术栈
 
 - 前端：Next.js 15、React 19、TypeScript、Tailwind CSS、Recharts
-- 后端：FastAPI、OpenAI SDK 兼容接口、pdfplumber、Camelot、pytesseract、numpy-financial
+- 后端：FastAPI、OpenAI SDK 兼容接口、pdfplumber、pytesseract、numpy-financial
 - 推荐部署：前端 Vercel，后端 Render Docker
 
 ## 本地运行
@@ -64,7 +64,7 @@ LLM_MODEL=deepseek-chat
 如果需要 OCR，系统还需要安装 Tesseract 和中文语言包。macOS 可使用：
 
 ```bash
-brew install tesseract tesseract-lang ghostscript
+brew install tesseract tesseract-lang
 ```
 
 ## 环境变量
@@ -147,7 +147,7 @@ brew install tesseract tesseract-lang ghostscript
 - 后端返回“请输入你的 LLM API Key”：在页面 API 设置里输入自己的 key，或给后端配置 `DEEPSEEK_API_KEY`
 - 前端请求失败：检查 `NEXT_PUBLIC_API_BASE_URL` 是否指向后端，且后端 `CORS_ORIGINS` 包含前端域名
 - PDF 提取为空：可能是扫描件，需要启用 OCR 并安装 Tesseract 中文语言包
-- Camelot 表格提取失败：线上镜像需要 Ghostscript，Dockerfile 已包含；复杂 PDF 仍可能需要 prompt 从正文中补偿解析
+- PDF 表格提取不完整：当前实现不使用 Camelot，优先把 pdfplumber/OCR 提取出的正文交给大模型理解；复杂扫描件可能需要更高质量 OCR。
 
 ## 后续优化建议
 
