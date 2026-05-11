@@ -1,6 +1,6 @@
 "use client";
 
-import React, { ChangeEvent, DragEvent, useMemo, useRef, useState } from "react";
+import React, { ChangeEvent, DragEvent, useEffect, useMemo, useRef, useState } from "react";
 import { FileText, KeyRound, Loader2, Paperclip, RotateCcw, UploadCloud, X } from "lucide-react";
 import {
   CartesianGrid,
@@ -292,29 +292,62 @@ function PreviewToolbar({ loading }: { loading: boolean }) {
 }
 
 function MetricComparison({ results }: { results: AnalysisResult[] }) {
-  const first = results[0];
-  const premium = first?.["首年交多少"] || 0;
-  const years = first?.["交多久"] || 0;
-  const latestCashValue = first?.["现金价值"] || first?.["利益演示表"]?.at(-1)?.cash_value;
-  const latestIrr = first?.irrTrend?.filter((value) => value !== null).at(-1);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [results]);
+
+  const selected = results[selectedIndex] || results[0];
+  const premium = selected?.["首年交多少"] || 0;
+  const years = selected?.["交多久"] || 0;
+  const latestCashValue = selected?.["现金价值"] || selected?.["利益演示表"]?.at(-1)?.cash_value;
+  const latestIrr = selected?.irrTrend?.filter((value) => value !== null).at(-1);
   const metrics = [
-    { label: "Annual Premium", value: first ? currency(premium) : "--" },
-    { label: "Total Premium", value: first ? currency(first["总保费"] || Number(premium) * Number(years)) : "--" },
+    { label: "Annual Premium", value: selected ? currency(premium) : "--" },
+    { label: "Total Premium", value: selected ? currency(selected["总保费"] || Number(premium) * Number(years)) : "--" },
     { label: "Cash Value", value: latestCashValue ? currency(latestCashValue) : "--" },
-    { label: "Death Benefit", value: first ? currency(first["身故保障"] || first["保多少"]) : "--" },
-    { label: "Expected Return", value: first?.["预期收益"] ? currency(first["预期收益"]) : "--" },
+    { label: "Death Benefit", value: selected ? currency(selected["身故保障"] || selected["保多少"]) : "--" },
+    { label: "Expected Return", value: selected?.["预期收益"] ? currency(selected["预期收益"]) : "--" },
     { label: "IRR", value: typeof latestIrr === "number" ? `${latestIrr.toFixed(2)}%` : "--" },
   ];
 
   return (
     <section className="rounded-2xl border border-[#ddd6cb] bg-[#fffdf9] p-4">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <h2 className="text-base font-semibold text-[#25221f]">Key Metrics</h2>
-          <p className="mt-1 text-xs text-[#857b70]">{first?.["产品名称"] || "Upload a proposal to generate comparable metrics."}</p>
+          <p className="mt-1 text-xs text-[#857b70]">
+            {selected?.["产品名称"] || "Upload a proposal to generate comparable metrics."}
+          </p>
         </div>
-        <Paperclip className="h-4 w-4 text-[#a09184]" />
+        <Paperclip className="mt-1 h-4 w-4 shrink-0 text-[#a09184]" />
       </div>
+
+      {results.length > 1 && (
+        <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+          {results.map((result, index) => {
+            const active = index === selectedIndex;
+            const name = result["产品名称"] || `Plan ${index + 1}`;
+
+            return (
+              <button
+                key={`${name}-${index}`}
+                type="button"
+                onClick={() => setSelectedIndex(index)}
+                className={`shrink-0 rounded-full border px-3.5 py-2 text-xs font-semibold transition ${
+                  active
+                    ? "border-[#171512] bg-[#171512] text-white shadow-sm"
+                    : "border-[#ded6cb] bg-[#f8f5ef] text-[#665c51] hover:border-[#c7baaa] hover:bg-white"
+                }`}
+              >
+                {name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {metrics.map((metric) => (
           <div key={metric.label} className="rounded-2xl bg-[#262a3b] px-4 py-5 text-white shadow-sm">
