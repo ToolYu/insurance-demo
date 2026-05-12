@@ -1,42 +1,149 @@
-# 保险计划书分析工具
+# InsureLens
 
-一个用于分析保险计划书的线上应用原型。用户可以上传 PDF/TXT 文件，或直接粘贴计划书文字，并在网页中输入自己的 LLM API Key；后端提取文本并调用 LLM 结构化关键信息，前端展示保障、缴费、现金价值、IRR、回本期和用户可读总结。
+InsureLens is a full-stack web application for analyzing insurance proposal documents. Users upload one or more proposal files, enter their own LLM API key, and receive a structured analysis with key metrics, cash value trends, IRR trends, and plain-English advisor notes.
 
-## 功能
+The project is designed as a deployable web app rather than a local-only prototype. The frontend runs on Next.js, and the backend runs on FastAPI.
 
-- 上传多个 PDF/TXT/Markdown/JSON 文件进行分析
-- 直接粘贴计划书文本进行分析
-- 提取产品名称、保障金额、保障期间、首年保费、缴费年限、利益演示表
-- 计算现金流、回本期和 IRR 趋势
-- 生成普通用户可理解的方案总结和风险提示
-- 多方案核心指标与趋势图对比
-- 用户自带 API Key，不需要部署方保存统一模型密钥
+## Features
 
-## 技术栈
+- Upload multiple insurance proposal files.
+- Enter a user-owned LLM API key directly in the web UI.
+- Extract core insurance fields from PDF and text-based documents.
+- Display annual premium, total premium, cash value, death benefit, expected return, and IRR.
+- Compare multiple insurance products with charts.
+- Switch the Key Metrics panel between uploaded products.
+- Generate advisor-style notes for each product.
+- Use PDF text extraction with OCR fallback for scanned pages.
+- Deploy the frontend and backend separately for production use.
 
-- 前端：Next.js 15、React 19、TypeScript、Tailwind CSS、Recharts
-- 后端：FastAPI、OpenAI SDK 兼容接口、pdfplumber、pytesseract、numpy-financial
-- 推荐部署：前端 Vercel，后端 Render Docker
+## Tech Stack
 
-## 本地运行
+### Frontend
 
-### 1. 前端
+- Next.js 15
+- React 19
+- TypeScript
+- Tailwind CSS
+- Recharts
+- lucide-react
 
-```bash
-npm install
-cp .env.example .env.local
-npm run dev
+### Backend
+
+- FastAPI
+- Python
+- pdfplumber
+- pytesseract
+- OpenAI-compatible LLM API client
+- numpy-financial
+
+### Deployment
+
+- Frontend: Vercel
+- Backend: Render Docker Web Service
+- Source control: GitHub
+
+## Application Flow
+
+1. The user opens the web app.
+2. The user uploads one or more insurance proposal files.
+3. The user enters their own LLM API key.
+4. The frontend sends the files and API key to the backend.
+5. The backend extracts text from each file.
+6. If a PDF page has no selectable text, OCR is used as a fallback.
+7. The backend sends the extracted content to the LLM.
+8. The LLM returns structured insurance data.
+9. The backend normalizes fields and computes missing metrics when possible.
+10. The frontend renders metrics, charts, and advisor notes.
+
+## Project Structure
+
+```text
+.
+├── src/
+│   ├── app/
+│   ├── components/
+│   │   └── Dashboard.tsx
+│   └── lib/
+│       ├── analysis.ts
+│       ├── api.ts
+│       └── types.ts
+├── backend/
+│   ├── app/
+│   │   ├── api/
+│   │   ├── core/
+│   │   ├── services/
+│   │   ├── main.py
+│   │   └── models.py
+│   ├── Dockerfile
+│   └── requirements.txt
+├── render.yaml
+├── vercel.json
+├── package.json
+└── README.md
 ```
 
-默认前端地址是 `http://localhost:3000`。
+## Frontend Overview
 
-`.env.local`：
+The frontend provides a two-column interface inspired by modern SaaS product pages. The left side contains the upload and API key workflow. The right side contains the analysis preview.
 
-```bash
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+The main UI is implemented in:
+
+```text
+src/components/Dashboard.tsx
 ```
 
-### 2. 后端
+The analysis preview includes:
+
+- Key Metrics
+- Cash Value Trend
+- IRR Trend
+- Advisor Notes
+
+When multiple proposal files are analyzed, the charts compare all products. The Key Metrics panel includes product selector buttons so the user can switch between products without changing the overall layout.
+
+## Backend Overview
+
+The backend receives uploaded files, extracts text, calls the LLM, normalizes the response, computes derived values, and returns structured JSON to the frontend.
+
+Key backend modules:
+
+```text
+backend/app/api/routes.py
+backend/app/services/document_parser.py
+backend/app/services/llm.py
+backend/app/services/analysis.py
+backend/app/core/config.py
+```
+
+The backend supports the following analysis fields:
+
+- Product name
+- Annual premium
+- Payment duration
+- Total premium
+- Coverage amount
+- Death benefit
+- Cash value
+- Expected return
+- Benefit illustration table
+- IRR trend
+- Summary notes
+
+## Local Development
+
+### Prerequisites
+
+- Node.js 20 or newer
+- Python 3.11 or newer
+- Tesseract OCR, if OCR support is needed
+
+On macOS, install Tesseract with:
+
+```bash
+brew install tesseract tesseract-lang
+```
+
+### 1. Start the Backend
 
 ```bash
 cd backend
@@ -47,112 +154,186 @@ cp .env.example .env
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-如果希望用户在网页输入自己的 API Key，`backend/.env` 不需要配置模型密钥。只需要配置 CORS：
+The backend will run at:
 
-```bash
-CORS_ORIGINS=http://localhost:3000
+```text
+http://localhost:8000
 ```
 
-也可以配置平台兜底 key，用户不输入 key 时后端会使用这个 key：
+Health check:
+
+```text
+http://localhost:8000/api/health
+```
+
+### 2. Start the Frontend
+
+In a second terminal:
 
 ```bash
-DEEPSEEK_API_KEY=你的 DeepSeek API Key
+npm install
+cp .env.example .env.local
+npm run dev
+```
+
+The frontend will run at:
+
+```text
+http://localhost:3000
+```
+
+## Environment Variables
+
+### Frontend
+
+Create `.env.local` from `.env.example`.
+
+```bash
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+```
+
+For production, this should point to the deployed backend URL, for example:
+
+```bash
+NEXT_PUBLIC_API_BASE_URL=https://insurance-analyzer-api.onrender.com
+```
+
+### Backend
+
+Create `backend/.env` from `backend/.env.example`.
+
+```bash
+DEEPSEEK_API_KEY=
 LLM_BASE_URL=https://api.deepseek.com/v1
 LLM_MODEL=deepseek-chat
+CORS_ORIGINS=http://localhost:3000
+CORS_ORIGIN_REGEX=https://.*\.vercel\.app
+MAX_UPLOAD_SIZE_MB=20
+ENABLE_OCR=true
+MAX_PDF_PAGES=20
+MAX_LLM_CHARS=60000
 ```
 
-如果需要 OCR，系统还需要安装 Tesseract 和中文语言包。macOS 可使用：
+`DEEPSEEK_API_KEY` is optional. The app is designed so users can enter their own API key in the frontend. If a backend fallback key is configured, the backend can use it when the request does not include a user key.
+
+## User API Key Model
+
+InsureLens does not require the deployment owner to hard-code a shared API key in the frontend.
+
+The user enters an API key in the web page. The key is sent to the backend only for the current analysis request. It is not saved in the repository and is not persisted by the frontend after refresh.
+
+For production, the app should always be served over HTTPS.
+
+## Deployment
+
+### Why Not GitHub Pages
+
+GitHub Pages is not suitable for the full application because InsureLens requires:
+
+- A backend API
+- File uploads
+- PDF processing
+- OCR fallback
+- LLM API calls
+- Server-side environment variables
+
+GitHub Pages can only host static frontend files. It cannot run the FastAPI backend or process uploaded documents.
+
+### Recommended Deployment
+
+Use:
+
+- Vercel for the Next.js frontend
+- Render for the FastAPI backend
+
+This architecture keeps the frontend fast and simple while allowing the backend to handle document parsing and LLM analysis.
+
+### Deploy the Backend on Render
+
+This repository includes `render.yaml` and `backend/Dockerfile`.
+
+Recommended Render settings:
+
+- Service type: Web Service
+- Environment: Docker
+- Root directory: `backend`
+- Health check path: `/api/health`
+
+Important environment variables:
 
 ```bash
-brew install tesseract tesseract-lang
+LLM_BASE_URL=https://api.deepseek.com/v1
+LLM_MODEL=deepseek-chat
+CORS_ORIGINS=https://your-vercel-domain.vercel.app
+CORS_ORIGIN_REGEX=https://.*\.vercel\.app
+MAX_UPLOAD_SIZE_MB=20
+ENABLE_OCR=true
+MAX_PDF_PAGES=20
+MAX_LLM_CHARS=60000
 ```
 
-## 环境变量
+`DEEPSEEK_API_KEY` can be left empty if every user enters their own key in the web UI.
 
-前端：
+### Deploy the Frontend on Vercel
 
-- `NEXT_PUBLIC_API_BASE_URL`：后端 API 地址，例如 `https://your-api.onrender.com`
+Recommended Vercel settings:
 
-后端：
+- Framework preset: Next.js
+- Build command: `npm run build`
+- Install command: `npm install`
+- Root directory: repository root
 
-- `DEEPSEEK_API_KEY`：可选。平台兜底 DeepSeek API Key，也兼容 `OPENAI_API_KEY`
-- `LLM_BASE_URL`：OpenAI 兼容接口地址，默认 `https://api.deepseek.com/v1`
-- `LLM_MODEL`：模型名，默认 `deepseek-chat`
-- `CORS_ORIGINS`：允许访问后端的前端域名，多个用英文逗号分隔
-- `MAX_UPLOAD_SIZE_MB`：单文件上传大小限制，默认 20
-- `ENABLE_OCR`：是否启用 OCR，默认 `true`
+Set this environment variable in Vercel:
 
-## 部署
+```bash
+NEXT_PUBLIC_API_BASE_URL=https://your-render-backend.onrender.com
+```
 
-### 是否适合 GitHub Pages
+After deployment, make sure the Vercel domain is allowed by the backend CORS configuration.
 
-不适合完整部署到 GitHub Pages。原因是本项目包含 FastAPI 后端、文件上传、PDF/OCR 解析和 LLM API 调用。GitHub Pages 只能托管静态文件，不能安全保存 API Key，也不能运行后端解析任务。
+## Validation
 
-### 推荐方案
+Run frontend checks:
 
-推荐使用：
+```bash
+npm run typecheck
+npm run build
+```
 
-- 前端：Vercel
-- 后端：Render Docker Web Service
+Run backend syntax validation:
 
-这个组合适合当前架构：Vercel 负责 Next.js 静态/前端体验，Render 负责 Python 后端、系统依赖、文件上传解析和 LLM 调用。
+```bash
+cd backend
+python -m compileall app
+```
 
-### 后端部署到 Render
+Run the backend locally and check:
 
-仓库已提供 `render.yaml` 和 `backend/Dockerfile`。在 Render 创建 Blueprint 或 Web Service 后配置：
+```text
+http://localhost:8000/api/health
+```
 
-- Root Directory：`backend`
-- Environment：Docker
-- Health Check Path：`/api/health`
-- 环境变量：
-  - `DEEPSEEK_API_KEY`：可选；如果希望所有用户自填 key，可以不配置
-  - `LLM_BASE_URL`
-  - `LLM_MODEL`
-  - `CORS_ORIGINS=https://你的前端域名`
-  - `MAX_UPLOAD_SIZE_MB=20`
-  - `ENABLE_OCR=true`
+## Known Limitations
 
-### 前端部署到 Vercel
+- Large PDFs may take longer to process.
+- Scanned PDFs are slower because OCR is required.
+- Render free instances may cold start after inactivity.
+- LLM extraction quality depends on document quality and the selected model.
+- The app does not currently store user accounts or analysis history.
+- Uploaded files are processed for the request and are not persisted as long-term records.
 
-在 Vercel 导入仓库，配置：
+## Future Improvements
 
-- Framework Preset：Next.js
-- Build Command：`npm run build`
-- Output：默认
-- 环境变量：
-  - `NEXT_PUBLIC_API_BASE_URL=https://你的 Render 后端域名`
+- Add more detailed timeout and API-key error messages.
+- Add downloadable PDF or CSV reports.
+- Add side-by-side product comparison tables.
+- Add saved analysis history.
+- Add a sample demo mode that does not require a user API key.
+- Add stricter JSON schema validation for LLM responses.
+- Add background jobs for large file processing.
+- Add monitoring and structured backend logs.
+- Add automated end-to-end tests.
 
-部署后，把 Vercel 域名追加到 Render 的 `CORS_ORIGINS`。
+## Current Status
 
-## 用户 API Key 模式
-
-网页中的 API Key 输入框用于 DeepSeek/OpenAI 兼容接口。默认配置是：
-
-- Base URL：`https://api.deepseek.com/v1`
-- Model：`deepseek-chat`
-
-用户输入的 key 只保存在当前页面内存里，并随 `/api/analyze` 或 `/api/analyze-text` 请求发送到后端。刷新页面后需要重新输入。生产环境必须使用 HTTPS，避免 API Key 在传输过程中暴露。
-
-## 文件上传说明
-
-当前实现直接把上传文件发送到后端内存处理，不落盘持久化，适合计划书解析这种短任务。生产环境建议：
-
-- 限制文件大小和文件类型
-- 对上传内容做病毒扫描或隔离处理
-- 大文件或批量任务改为对象存储加异步队列
-- 保留请求日志，但不要记录用户隐私原文
-
-## 常见问题
-
-- 后端返回“请输入你的 LLM API Key”：在页面 API 设置里输入自己的 key，或给后端配置 `DEEPSEEK_API_KEY`
-- 前端请求失败：检查 `NEXT_PUBLIC_API_BASE_URL` 是否指向后端，且后端 `CORS_ORIGINS` 包含前端域名
-- PDF 提取为空：可能是扫描件，需要启用 OCR 并安装 Tesseract 中文语言包
-- PDF 表格提取不完整：当前实现不使用 Camelot，优先把 pdfplumber/OCR 提取出的正文交给大模型理解；复杂扫描件可能需要更高质量 OCR。
-
-## 后续优化建议
-
-- 增加用户登录、任务历史和分析报告导出
-- 为 LLM 输出增加 JSON Schema 校验和重试
-- 增加异步任务队列，避免大文件请求超时
-- 引入对象存储，处理多页大 PDF
-- 增加端到端测试和后端单元测试样例
+The app is currently deployable with a Vercel frontend and Render backend. The latest UI supports multi-file analysis, chart comparison, and product switching inside the Key Metrics panel.
